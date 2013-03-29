@@ -1,4 +1,7 @@
 Appendix 3.1a: Steps 1-2 of radiometric correction. Converting DN values to exoatmospheric reflectance
+# Ilias Note: additional resources for color correction http://code.google.com/p/xatmcorr/source/browse/trunk/src/main.cpp?r=31
+# http://code.google.com/p/xatmcorr/source/browse/trunk/src/dntotoa.cpp?r=31
+
 # Start of Bilko for Windows formula document to radiometrically correct Landsat-5 TM bands
 
 # 1-3 collected over the Turks and Caicos on 22 November 1990.
@@ -87,24 +90,24 @@ const dsquared = -- ;
 # SZ = 90-39 = 51- = 0.89012 radians
 const SZ = 0.89012 ;
 
-	function getJD(mon,day,yr,hr,min,sec) {
-	                                       var m=parseFloat(mon.value);
-	                                       var d=parseFloat(day.value);
-	                                       var y=parseFloat(yr.value);
-	                                       var minute=parseFloat(min.value);
-	                                       var hour=parseFloat(hr.value);
-	                                       var second=parseFloat(sec.value);
-	                                     if (m < 3) {
-	                                       y=y-1;
-	                                       m=m+12;
-	                                     }
-	                                       var A=Math.floor(y/100);
-	                                       var B=2-A+Math.floor(A/4);
-	                                       JD=Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5;
-	                                       JD=JD+hour/24.0+minute/1440.0+second/86400.0;
-	                                       JD=Math.round(JD*1000000)/1000000;
-	                                       return JD;
-	                                    }
+function getJD(mon,day,yr,hr,min,sec) {
+	var m=parseFloat(mon.value);
+	var d=parseFloat(day.value);
+	var y=parseFloat(yr.value);
+	var minute=parseFloat(min.value);
+	var hour=parseFloat(hr.value);
+	var second=parseFloat(sec.value);
+	if (m < 3) {
+	y=y-1;
+	m=m+12;
+	}
+	var A=Math.floor(y/100);
+	var B=2-A+Math.floor(A/4);
+	JD=Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5;
+	JD=JD+hour/24.0+minute/1440.0+second/86400.0;
+	JD=Math.round(JD*1000000)/1000000;
+	return JD;
+}
 
 #Mean solar exoatmospheric irradiance in mW cm-2m m-1. ESUN can be obtained from Table 11.2 in http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html.
 const ESUN1 = 1997;
