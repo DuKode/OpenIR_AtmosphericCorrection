@@ -17,9 +17,10 @@ except ImportError:
 
 import sys
 import os.path
+from gdalconst import *
 
 def Usage():
-    print(""" openir_atmosphericcorrection.py [sourcefile] [dstfile] """)
+    print("""USAGE: openir_atmosphericcorrection.py [sourcefile] [dstfile] """)
     sys.exit(1)
 
 # =============================================================================
@@ -28,18 +29,18 @@ def Usage():
 
 quiet_flag = 0
 src_filename = None
-src_band = 1
+src_band = None
 
 dst_filename = None
 format = 'GTiff'
 creation_options = []
 
-argv = gdal.GeneralCmdLineProcessor( sys.argv )
+gdal.AllRegister() #what is that for? 
 argv = gdal.GeneralCmdLineProcessor( sys.argv )
 if argv is None:
     sys.exit( 0 )
 
-print "x"
+# print "x"
 # ############################
 # Parse command line arguments.
 # ############################
@@ -64,17 +65,50 @@ while i < len(argv):
 if src_filename is None:
     Usage()
 
+if dst_filename is None:
+    Usage()
 
-print "SOURCE FILE "+ src_filename
-print "DESTINATION FILE "+ dst_filename
+
 # ###################################################
-# DETERMINE THE BAND. 
+# DETERMINE THE BAND. read geotiff metadata 
 # ###################################################
 
 
-
-
-
-#
+# #############################################################################
 # PROCESS TILE
-#
+# #############################################################################
+# =============================================================================
+#	Setup Atmospheric Correction   
+# =============================================================================
+
+
+# =============================================================================
+#	Open source file
+# =============================================================================
+if dst_filename is None:
+    src_ds = gdal.Open( src_filename, gdal.GA_Update )
+else:
+    src_ds = gdal.Open( src_filename, gdal.GA_ReadOnly )
+ 
+if src_ds is None:
+    print('Unable to open %s' % src_filename)
+    sys.exit(1)
+
+
+if src_ds is None:
+    print "Could not read file."
+    Usage()
+else:
+    src_projection = src_ds.GetProjection()
+    src_geotransform = src_ds.GetGeoTransform()
+    src_datatype = src_ds.GetDriver().ShortName
+   
+    if not src_geotransform is None:
+         print 'Origin = (',src_geotransform[0], ',',src_geotransform[3],')'
+         print 'Pixel Size = (',src_geotransform[1], ',',src_geotransform[5],')'
+ 
+
+# =============================================================================
+#       Create output file if one is specified.
+# =============================================================================
+
