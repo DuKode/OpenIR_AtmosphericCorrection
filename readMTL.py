@@ -15,6 +15,7 @@ try:
 except ImportError:
     import gdal
 import re
+import time
 import sys
 import os.path
 from gdalconst import *
@@ -187,6 +188,7 @@ def getMTLkeywordValueWithSourceFilename( mtl_keyword , source_filename ):
        print ("MTL file found",  mtl_exists)
     else: 
        print ("MTL file not found")
+       sys.exit(1)
 	#      read MTL file 
     mtl_content = ""
     with open(mtl_filename, 'r') as content_file:
@@ -199,12 +201,24 @@ def getMTLkeywordValueWithSourceFilename( mtl_keyword , source_filename ):
 
 
 
-DATE_ACQUIRED = getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" ,  src_filename )
-print DATE_ACQUIRED
+DATE_ACQUIRED = '2006-12-15'#getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" ,  src_filename )
+print "DATE_ACQUIRED of MTL FILE =" ,DATE_ACQUIRED
 
 
 
+# =============================================================================
+#      JULIAN DATE 
+# =============================================================================
+def getJulianDateWithDATE_ACQUIRED(date_acquired):
+    (year, month, day) = DATE_ACQUIRED.split('-')
+    year = int(year)
+    month = int(month)
+    day = int(day)
+    t = time.mktime((year, month, day, 0, 0, 0, 0, 0, 0))
+    time.gmtime(t)
+    return time.gmtime(t)[7]
 
+print "JULIAN DATE of MTL FILE = ", getJulianDateWithDATE_ACQUIRED(DATE_ACQUIRED) 
 
 # Input values for LOW GAIN 
 # GET LMIN WITH BANDID (GETBAND)
