@@ -35,11 +35,14 @@ def changePixelData(filename,amount):
     band = inDS.GetRasterBand(bandnumber)
     driver = inDS.GetDriver()
     
-    driver.Create("cpy" + filename, inDS.RasterXSize, inDS.RasterYSize,bandnumber, GDT_UInt16)
+    driver.CreateCopy("cpy" + filename,inDS,False)
     outDS = gdal.Open("cpy" + filename)
+    outDS.SetProjection(inDS.GetProjection())
+    outDS.SetGeoTransform(inDS.GetGeoTransform())
+    
     outBand = outDS.GetRasterBand(bandnumber)
-    outdata = [[]]
-    data = [[]]
+    outdata = None
+    data = None
 
     i = 0
     while i <= xrange(inDS.RasterYSize):
@@ -49,24 +52,36 @@ def changePixelData(filename,amount):
             if rowsize == 0:
                 break
         data = band.ReadAsArray(0,i,inDS.RasterXSize,10)
+        for row in xrange(10):
+            for col in xrange(inDS.RasterXSize):
+                if data[row][col] + amount > 255:
+                    data[row][col] = 255
+                else:
+                    data[row][col] = data[row][col] + amount
         outBand.WriteArray(data,0,i)
         i = i + 10
-	
-
-    outdata = outBand.ReadAsArray(0,0,inDS.RasterXSize, 3)
-    for row in xrange(len(outdata)):
-        for col in xrange(len(outdata)):
-            if not data[row][col] == outdata[row][col]:
-                print row
-                print col
-                print data[row][col]
-                print outdata[row][col]
-                return False
         
-    outDS.SetProjection(inDS.GetProjection())
-    outDS.SetGeoTransform(inDS.GetGeoTransform())
-            
-    return True
+    print "written"
+
+##    j = 0    
+##    while j <= xrange(inDS.RasterYSize):
+##        rowsize = 10
+##        if rowsize+j > inDS.RasterYSize:
+##            rowsize = inDS.RasterYSize - j - 1
+##            if rowsize == 0:
+##                break
+##        data = band.ReadAsArray(0,j,inDS.RasterXSize,10)
+##        outdata = outBand.ReadAsArray(0,j,inDS.RasterXSize,10)
+##        for row in xrange(len(outdata)):
+##            for col in xrange(len(outdata)):
+##                if not data[row][col] == outdata[row][col]:
+##                    print row
+##                    print col
+##                    print data[row][col]
+##                    print outdata[row][col]
+##                    return False
+##        j = j + 10
+ 
 
 
     
