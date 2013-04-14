@@ -264,64 +264,68 @@ def      SunEarthDistanceRatio(d_n):
 #       Create output file if one is specified.
 # =============================================================================
 def convertDNtoExoatmosphericReflectance(source_filename):
-       #function variables
-       bandID = getBand(source_filename)
-       Lmin = getLminWithBand(bandID)       
-       Lmax = getLmaxWithBand(bandID)
-       QCALMIN = 1 
-       QCALMAX = 255
-
-     # pending center lat lon
-      # CenterLon =  
-      #   CenterLat = 
-        #!!!!!!############################################################################### pending DN parse function 
-      
-      
-       #Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
-       L = exp( Lmin+(Lmax/254-Lmin/255))
-
-      # // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
-      # // QCAL = digital number, based on image's greyscale value
-      # // LMINlambda= spectral radiance scales to QCALMIN, 
-      # // LMAXlambda = spectral radiance scales to QCALMAX
-      # // QCALMIN = the minimum quantized calibrated pixel value (typically = 1, based on the images's MTL file)
-      # // QCALMAX = the maximum quantized calibrated pixel value (typically = 255, based on the images's MTL file)
-       LMINL = exp( Lmin / QCALMIN )
-       LMAXL = exp( Lmax / QCALMAX )
-       L = exp(((lmax - LMINL)/(qcalmax-qcalmin))*(DN-qcalmin)+lmin)
-     
-      # Step 2. Converting at satellite spectral radiance (L) to exoatmospheric reflectance
-
-      #!!!!!!############################################################################### pending DATE_ACQUIRED parse function 
-      #REVISE the square of the Earth-Sun distance in astronomical units
-      # there is a distinct distance for every day of the year
-      #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
-      # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
-       dcal = exp( 1- 0.01672 * math.cos( math.radians( 0.9856 * (JulianDate -4 ))))
-      
-       #REVISE DATE BASED ON IMAGE
-       dsquared = math.sqrt(dcal)
-
-      #REVISE SUN ZENITH ANGLE BASED ON RADIANS
-      #23.5 is the tilt of the earth
-      #SZ = Latitude + (23.5 * cosine(JulianDate));
-      # SZ = 90-39 = 51- = 0.89012 radians
-      #SZ = 0.89012 ;
-       SZ = exp( LAT +  (23.5 * math.cos(JulianDate))) 
-      
-      # // reflectance or Rolamda = Unitless plantary reflectance
-      #     // radiance or Llamda= spectral radiance (from earlier step)
-      #     // d = Earth-Sun distance in astronmoical units 
-      #     // ESUNlamda = mean solar exoatmospheric irradiances 
-      #     // ths or thetas = solar zenith angle
-
-       ESUN = getSolarIrradianceWithBand()
-       R = exp( math.pi * L * dsquared / (ESUN * math.cos(SZ)) )
-      
-      # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
-      # AI = 1 / (Global gas transmittance * Total scattering transmittance)
-      # BI = - Reflectance / Total scattering transmittance
-      # 
-      # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
-      # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
-      # 
+	   #function variables
+	   bandID = getBand(source_filename)
+	   Lmin = getLminWithBand(bandID)       
+	   Lmax = getLmaxWithBand(bandID)
+	   QCALMIN = 1 
+	   QCALMAX = 255
+	
+	 # pending center lat lon
+	  # CenterLon =  
+	  #   CenterLat = 
+		#!!!!!!############################################################################### pending DN parse function 
+	  
+	  
+		#Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
+		L = exp( Lmin+(Lmax/254-Lmin/255))
+	
+		
+		# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
+	  	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
+		# // QCAL = digital number, based on image's greyscale value
+		# // LMINlambda= spectral radiance scales to QCALMIN, 
+		# // LMAXlambda = spectral radiance scales to QCALMAX
+		# // QCALMIN = the minimum quantized calibrated pixel value (typically = 1, based on the images's MTL file)
+		# // QCALMAX = the maximum quantized calibrated pixel value (typically = 255, based on the images's MTL file)
+		# LMINL = exp( Lmin / QCALMIN )
+		# LMAXL = exp( Lmax / QCALMAX )
+		# L = exp(((lmax - LMINL)/(qcalmax-qcalmin))*(DN-qcalmin)+lmin)
+	 
+	 
+	 
+	  # Step 2. Converting at satellite spectral radiance (L) to exoatmospheric reflectance
+	
+	  #!!!!!!############################################################################### pending DATE_ACQUIRED parse function 
+	  #REVISE the square of the Earth-Sun distance in astronomical units
+	  # there is a distinct distance for every day of the year
+	  #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
+	  # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
+	   dcal = exp( 1- 0.01672 * math.cos( math.radians( 0.9856 * (JulianDate -4 ))))
+	  
+	   #REVISE DATE BASED ON IMAGE
+	   dsquared = math.sqrt(dcal)
+	
+	  #REVISE SUN ZENITH ANGLE BASED ON RADIANS
+	  #23.5 is the tilt of the earth
+	  #SZ = Latitude + (23.5 * cosine(JulianDate));
+	  # SZ = 90-39 = 51- = 0.89012 radians
+	  #SZ = 0.89012 ;
+	   SZ = exp( LAT +  (23.5 * math.cos(JulianDate))) 
+	  
+	  # // reflectance or Rolamda = Unitless plantary reflectance
+	  #     // radiance or Llamda= spectral radiance (from earlier step)
+	  #     // d = Earth-Sun distance in astronmoical units 
+	  #     // ESUNlamda = mean solar exoatmospheric irradiances 
+	  #     // ths or thetas = solar zenith angle
+	
+	   ESUN = getSolarIrradianceWithBand()
+	   R = exp( math.pi * L * dsquared / (ESUN * math.cos(SZ)) )
+	  
+	  # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
+	  # AI = 1 / (Global gas transmittance * Total scattering transmittance)
+	  # BI = - Reflectance / Total scattering transmittance
+	  # 
+	  # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
+	  # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
+	  # 
