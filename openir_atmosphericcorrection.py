@@ -19,129 +19,56 @@ import sys
 import os.path
 from gdalconst import *
 from math import *
+
+#time
+import re
+import time
+
 def Usage():
     print("""USAGE: openir_atmosphericcorrection.py [sourcefile] [dstfile] """)
     sys.exit(1)
 
 from osgeo import osr, gdal
-# =============================================================================
-#       Mainline
-# =============================================================================
-
-quiet_flag = 0
-src_filename = None
-src_band = None
-
-dst_filename = None
-format = 'GTiff'
-creation_options = []
-
-gdal.AllRegister() #what is that for? 
-argv = gdal.GeneralCmdLineProcessor( sys.argv )
-if argv is None:
-    sys.exit( 0 )
-
-# print "x"
-# ############################
-# Parse command line arguments.
-# ############################
-i = 1
-while i < len(argv):
-    arg = argv[i]
-
-    if arg[:2] == '-h':
-        Usage()
-
-    elif src_filename is None:
-        src_filename = argv[i]
-
-    elif dst_filename is None:
-        dst_filename = argv[i]
-
-    else:
-        Usage()
-
-    i = i + 1
-
-if src_filename is None:
-    Usage()
-
-if dst_filename is None:
-    Usage()
 
 
-# ###################################################
-# DETERMINE THE BAND. read geotiff metadata 
-# ###################################################
 
-
-# #############################################################################
-# PROCESS TILE
-# #############################################################################
-# =============================================================================
-#      Setup Atmospheric Correction   
-# =============================================================================
 
 
 # =============================================================================
-#      Open source file
+#      MTL file reader with Geotiff source filename as arguments 
 # =============================================================================
-if dst_filename is None:
-    src_ds = gdal.Open( src_filename, gdal.GA_Update )
-else:
-    src_ds = gdal.Open( src_filename, gdal.GA_ReadOnly )
- 
-if src_ds is None:
-    print('Unable to open %s' % src_filename)
-    sys.exit(1)
+def getMTLkeywordValueWithSourceFilename( mtl_keyword , source_filename ):
+    mtl_filename_list  = source_filename.split(r"_", 1)
+    mtl_filename = mtl_filename_list[0]
+    mtl_filename+=("_MTL.txt")
+    mtl_exists = os.path.exists( mtl_filename)
+    if(mtl_exists):
+       print ("MTL file found",  mtl_exists)
+    else: 
+       print ("MTL file not found")
+       sys.exit(1)
+	#read MTL file 
+    mtl_content = ""
+    with open(mtl_filename, 'r') as content_file:
+	  mtl_content = content_file.read()
 
+    for item in mtl_content.split("\n"):
+       if mtl_keyword in item:
+          return item.split(r" = ", 1)[1]
 
-if src_ds is None:
-    print "Could not read file."
-    Usage()
-else:
-    src_projection = src_ds.GetProjection()
-    src_geotransform = src_ds.GetGeoTransform()
-    src_datatype = src_ds.GetDriver().ShortName
-    width = src_ds.RasterXSize
-    height = src_ds.RasterYSize
-    gt = src_ds.GetGeoTransform()
-    minx = gt[0]
-    miny = gt[3] + width*gt[4] + height*gt[5] 
-    maxx = gt[0] + width*gt[1] + height*gt[2]
-    maxy = gt[3]
-    print 'minx  = (', minx, ')'
-    print 'miny  = (', miny, ')'
-    print 'maxx  = (', maxx, ')'
-    print 'maxy  = (', maxy, ')'
-	#get the coordinates in lat long
-    old_cs= osr.SpatialReference()
-    old_cs.ImportFromWkt(src_ds.GetProjectionRef())
-	# create the new coordinate system
-    wgs84_wkt = """
-    GEOGCS["WGS 84",
-        DATUM["WGS_1984",
-            SPHEROID["WGS 84",6378137,298.257223563,
-                AUTHORITY["EPSG","7030"]],
-            AUTHORITY["EPSG","6326"]],
-        PRIMEM["Greenwich",0,
-            AUTHORITY["EPSG","8901"]],
-        UNIT["degree",0.01745329251994328,
-            AUTHORITY["EPSG","9122"]],
-        AUTHORITY["EPSG","4326"]]"""
-    new_cs = osr.SpatialReference()
-    new_cs .ImportFromWkt(wgs84_wkt)
-    # create a transform object to convert between coordinate systems
-    transform = osr.CoordinateTransformation(old_cs,new_cs)
+# =============================================================================
+#      JULIAN DATE 
+# =============================================================================
+def getJulianDateWithDATE_ACQUIRED(date_acquired):
+    (year, month, day) = DATE_ACQUIRED.split('-')
+    year = int(year)
+    month = int(month)
+    day = int(day)
+    t = time.mktime((year, month, day, 0, 0, 0, 0, 0, 0))
+    time.gmtime(t)
+    return time.gmtime(t)[7]
 
-
-    LatLong = transform.TransformPoint(minx,miny)
-    print 'LatLong = (', LatLong, ')'
-
-    if not src_geotransform is None:
-         print 'Origin = (',src_geotransform[0], ',',src_geotransform[3],')'
-         print 'Pixel Size = (',src_geotransform[1], ',',src_geotransform[5],')'
-             
+           
 # Input values for LOW GAIN 
 # GET LMIN WITH BANDID (GETBAND)
 def getLminWithBand(bandID):
@@ -259,73 +186,199 @@ def      SunEarthDistanceRatio(d_n):
        E_0=exp( (1.000110+ 0.034221* math.cos(t) + 0.001280* math.sin(t) + 0.000719* math.cos(2*t) + 0.000077* math.sin(2*t)) )
        return math.sqrt(exp(1/E_0))
 
+# 
+# # =============================================================================
+# #       Create output file if one is specified.
+# # =============================================================================
+# def convertDNtoExoatmosphericReflectance(source_filename):
+# 	   #function variables
+# 	   bandID = getBand(source_filename)
+# 	   Lmin = getLminWithBand(bandID)       
+# 	   Lmax = getLmaxWithBand(bandID)
+# 	   QCALMIN = 1 
+# 	   QCALMAX = 255
+# 	
+# 	 # pending center lat lon
+# 	  # CenterLon =  
+# 	  #   CenterLat = 
+# 		#!!!!!!############################################################################### pending DN parse function 
+# 	  
+# 	  
+# 		#Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
+# 		L = exp( Lmin+(Lmax/254-Lmin/255))
+# 	
+# 		
+# 		# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
+# 	  	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
+# 		# // QCAL = digital number, based on image's greyscale value
+# 		# // LMINlambda= spectral radiance scales to QCALMIN, 
+# 		# // LMAXlambda = spectral radiance scales to QCALMAX
+# 		# // QCALMIN = the minimum quantized calibrated pixel value (typically = 1, based on the images's MTL file)
+# 		# // QCALMAX = the maximum quantized calibrated pixel value (typically = 255, based on the images's MTL file)
+# 		# LMINL = exp( Lmin / QCALMIN )
+# 		# LMAXL = exp( Lmax / QCALMAX )
+# 		# L = exp(((lmax - LMINL)/(qcalmax-qcalmin))*(DN-qcalmin)+lmin)
+# 	 
+# 	 
+# 	 
+# 	  # Step 2. Converting at satellite spectral radiance (L) to exoatmospheric reflectance
+# 	
+# 	  #!!!!!!############################################################################### pending DATE_ACQUIRED parse function 
+# 	  #REVISE the square of the Earth-Sun distance in astronomical units
+# 	  # there is a distinct distance for every day of the year
+# 	  #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
+# 	  # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
+# 	   dcal = exp( 1- 0.01672 * math.cos( math.radians( 0.9856 * (JulianDate -4 ))))
+# 	  
+# 	   #REVISE DATE BASED ON IMAGE
+# 	   dsquared = math.sqrt(dcal)
+# 	
+# 	  #REVISE SUN ZENITH ANGLE BASED ON RADIANS
+# 	  #23.5 is the tilt of the earth
+# 	  #SZ = Latitude + (23.5 * cosine(JulianDate));
+# 	  # SZ = 90-39 = 51- = 0.89012 radians
+# 	  #SZ = 0.89012 ;
+# 	   SZ = exp( LAT +  (23.5 * math.cos(JulianDate))) 
+# 	  
+# 	  # // reflectance or Rolamda = Unitless plantary reflectance
+# 	  #     // radiance or Llamda= spectral radiance (from earlier step)
+# 	  #     // d = Earth-Sun distance in astronmoical units 
+# 	  #     // ESUNlamda = mean solar exoatmospheric irradiances 
+# 	  #     // ths or thetas = solar zenith angle
+# 	
+# 	   ESUN = getSolarIrradianceWithBand()
+# 	   R = exp( math.pi * L * dsquared / (ESUN * math.cos(SZ)) )
+# 	  
+# 	  # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
+# 	  # AI = 1 / (Global gas transmittance * Total scattering transmittance)
+# 	  # BI = - Reflectance / Total scattering transmittance
+# 	  # 
+# 	  # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
+# 	  # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
+# 	  # 
+
+
 
 # =============================================================================
-#       Create output file if one is specified.
+#       Mainline
 # =============================================================================
-def convertDNtoExoatmosphericReflectance(source_filename):
-	   #function variables
-	   bandID = getBand(source_filename)
-	   Lmin = getLminWithBand(bandID)       
-	   Lmax = getLmaxWithBand(bandID)
-	   QCALMIN = 1 
-	   QCALMAX = 255
-	
-	 # pending center lat lon
-	  # CenterLon =  
-	  #   CenterLat = 
-		#!!!!!!############################################################################### pending DN parse function 
-	  
-	  
-		#Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
-		L = exp( Lmin+(Lmax/254-Lmin/255))
-	
-		
-		# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
-	  	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
-		# // QCAL = digital number, based on image's greyscale value
-		# // LMINlambda= spectral radiance scales to QCALMIN, 
-		# // LMAXlambda = spectral radiance scales to QCALMAX
-		# // QCALMIN = the minimum quantized calibrated pixel value (typically = 1, based on the images's MTL file)
-		# // QCALMAX = the maximum quantized calibrated pixel value (typically = 255, based on the images's MTL file)
-		# LMINL = exp( Lmin / QCALMIN )
-		# LMAXL = exp( Lmax / QCALMAX )
-		# L = exp(((lmax - LMINL)/(qcalmax-qcalmin))*(DN-qcalmin)+lmin)
-	 
-	 
-	 
-	  # Step 2. Converting at satellite spectral radiance (L) to exoatmospheric reflectance
-	
-	  #!!!!!!############################################################################### pending DATE_ACQUIRED parse function 
-	  #REVISE the square of the Earth-Sun distance in astronomical units
-	  # there is a distinct distance for every day of the year
-	  #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
-	  # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
-	   dcal = exp( 1- 0.01672 * math.cos( math.radians( 0.9856 * (JulianDate -4 ))))
-	  
-	   #REVISE DATE BASED ON IMAGE
-	   dsquared = math.sqrt(dcal)
-	
-	  #REVISE SUN ZENITH ANGLE BASED ON RADIANS
-	  #23.5 is the tilt of the earth
-	  #SZ = Latitude + (23.5 * cosine(JulianDate));
-	  # SZ = 90-39 = 51- = 0.89012 radians
-	  #SZ = 0.89012 ;
-	   SZ = exp( LAT +  (23.5 * math.cos(JulianDate))) 
-	  
-	  # // reflectance or Rolamda = Unitless plantary reflectance
-	  #     // radiance or Llamda= spectral radiance (from earlier step)
-	  #     // d = Earth-Sun distance in astronmoical units 
-	  #     // ESUNlamda = mean solar exoatmospheric irradiances 
-	  #     // ths or thetas = solar zenith angle
-	
-	   ESUN = getSolarIrradianceWithBand()
-	   R = exp( math.pi * L * dsquared / (ESUN * math.cos(SZ)) )
-	  
-	  # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
-	  # AI = 1 / (Global gas transmittance * Total scattering transmittance)
-	  # BI = - Reflectance / Total scattering transmittance
-	  # 
-	  # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
-	  # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
-	  # 
+
+quiet_flag = 0
+src_filename = None
+src_band = None
+
+dst_filename = None
+format = 'GTiff'
+creation_options = []
+
+gdal.AllRegister() #what is that for? 
+argv = gdal.GeneralCmdLineProcessor( sys.argv )
+if argv is None:
+    sys.exit( 0 )
+
+# print "x"
+# ############################
+# Parse command line arguments.
+# ############################
+i = 1
+while i < len(argv):
+    arg = argv[i]
+
+    if arg[:2] == '-h':
+        Usage()
+
+    elif src_filename is None:
+        src_filename = argv[i]
+
+    elif dst_filename is None:
+        dst_filename = argv[i]
+
+    else:
+        Usage()
+
+    i = i + 1
+
+if src_filename is None:
+    Usage()
+
+if dst_filename is None:
+    Usage()
+
+
+# ###################################################
+# DETERMINE THE BAND. read geotiff metadata 
+# ###################################################
+
+
+# #############################################################################
+# PROCESS TILE
+# #############################################################################
+# =============================================================================
+#      Setup Atmospheric Correction   
+# =============================================================================
+
+
+# =============================================================================
+#      Open source file
+# =============================================================================
+if dst_filename is None:
+    src_ds = gdal.Open( src_filename, gdal.GA_Update )
+else:
+    src_ds = gdal.Open( src_filename, gdal.GA_ReadOnly )
+ 
+if src_ds is None:
+    print('Unable to open %s' % src_filename)
+    sys.exit(1)
+
+
+if src_ds is None:
+    print "Could not read file."
+    Usage()
+else:
+    src_projection = src_ds.GetProjection()
+    src_geotransform = src_ds.GetGeoTransform()
+    src_datatype = src_ds.GetDriver().ShortName
+    width = src_ds.RasterXSize
+    height = src_ds.RasterYSize
+    gt = src_ds.GetGeoTransform()
+    minx = gt[0]
+    miny = gt[3] + width*gt[4] + height*gt[5] 
+    maxx = gt[0] + width*gt[1] + height*gt[2]
+    maxy = gt[3]
+    print 'minx  = (', minx, ')'
+    print 'miny  = (', miny, ')'
+    print 'maxx  = (', maxx, ')'
+    print 'maxy  = (', maxy, ')'
+	#get the coordinates in lat long
+    old_cs= osr.SpatialReference()
+    old_cs.ImportFromWkt(src_ds.GetProjectionRef())
+	# create the new coordinate system
+    wgs84_wkt = """
+    GEOGCS["WGS 84",
+        DATUM["WGS_1984",
+            SPHEROID["WGS 84",6378137,298.257223563,
+                AUTHORITY["EPSG","7030"]],
+            AUTHORITY["EPSG","6326"]],
+        PRIMEM["Greenwich",0,
+            AUTHORITY["EPSG","8901"]],
+        UNIT["degree",0.01745329251994328,
+            AUTHORITY["EPSG","9122"]],
+        AUTHORITY["EPSG","4326"]]"""
+    new_cs = osr.SpatialReference()
+    new_cs .ImportFromWkt(wgs84_wkt)
+    # create a transform object to convert between coordinate systems
+    transform = osr.CoordinateTransformation(old_cs,new_cs)
+
+
+    LatLong = transform.TransformPoint(minx,miny)
+    print 'LatLong = (', LatLong, ')'
+
+    if not src_geotransform is None:
+         print 'Origin = (',src_geotransform[0], ',',src_geotransform[3],')'
+         print 'Pixel Size = (',src_geotransform[1], ',',src_geotransform[5],')'
+ 
+DATE_ACQUIRED = getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" ,  src_filename )
+print "DATE_ACQUIRED of MTL FILE =" ,DATE_ACQUIRED
+
+
+print "JULIAN DATE of MTL FILE = ", getJulianDateWithDATE_ACQUIRED(DATE_ACQUIRED) 
