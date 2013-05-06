@@ -45,7 +45,7 @@ def getMTLkeywordValueWithSourceFilename( mtl_keyword , source_filename ):
     mtl_filename+=("_MTL.txt")
     mtl_exists = os.path.exists( mtl_filename)
     if(mtl_exists):
-       print ("MTL file found",  mtl_exists)
+       # print ("MTL file found",  mtl_exists)
     else: 
        print ("MTL file not found")
        sys.exit(1)
@@ -150,23 +150,23 @@ def getSolarIrradianceWithBand(bandID):
     ESUN6 = 000.0 
     ESUN7 = 84.90 
     ESUN8 = 1362.0
-    if band == 1:
+    if bandID == 1:
           return ESUN1
-    elif band == 2:
+    elif bandID == 2:
           return ESUN2
-    elif band == 3:
+    elif bandID == 3:
           return ESUN3
-    elif band == 4:
+    elif bandID == 4:
           return ESUN4
-    elif band == 5:
+    elif bandID == 5:
           return ESUN5
-    elif band == 61:
+    elif bandID == 61:
           return ESUN6
-    elif band == 62:
+    elif bandID == 62:
           return ESUN6
-    elif band == 7:
+    elif bandID == 7:
           return ESUN7
-    elif band == 8:
+    elif bandID == 8:
           return ESUN8
     else: 
           print "getL-MAX-WithBand error"
@@ -199,72 +199,78 @@ def CopyBand( srcband, dstband ):
 # # =============================================================================
 # #       Create output file if one is specified.
 # # =============================================================================
-# def convertDNtoExoatmosphericReflectance(source_filename):
-# 	   #function variables
-# 	   bandID = getBand(source_filename)
-# 	   Lmin = getLminWithBand(bandID)       
-# 	   Lmax = getLmaxWithBand(bandID)
-# 	   QCALMIN = 1 
-# 	   QCALMAX = 255
-# 	
-# 	 # pending center lat lon
-# 	  # CenterLon =  
-# 	  #   CenterLat = 
-# 		#!!!!!!############################################################################### pending DN parse function 
-# 	  
-# 	  
-# 		#Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
-# 		L = exp( Lmin+(Lmax/254-Lmin/255))
-# 	
-# 		
-# 		# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
-# 	  	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
-# 		# // QCAL = digital number, based on image's greyscale value
-# 		# // LMINlambda= spectral radiance scales to QCALMIN, 
-# 		# // LMAXlambda = spectral radiance scales to QCALMAX
-# 		# // QCALMIN = the minimum quantized calibrated pixel value (typically = 1, based on the images's MTL file)
-# 		# // QCALMAX = the maximum quantized calibrated pixel value (typically = 255, based on the images's MTL file)
-# 		# LMINL = exp( Lmin / QCALMIN )
-# 		# LMAXL = exp( Lmax / QCALMAX )
-# 		# L = exp(((lmax - LMINL)/(qcalmax-qcalmin))*(DN-qcalmin)+lmin)
-# 	 
-# 	 
-# 	 
-# 	  # Step 2. Converting at satellite spectral radiance (L) to exoatmospheric reflectance
-# 	
-# 	  #!!!!!!############################################################################### pending DATE_ACQUIRED parse function 
-# 	  #REVISE the square of the Earth-Sun distance in astronomical units
-# 	  # there is a distinct distance for every day of the year
-# 	  #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
-# 	  # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
-# 	   dcal = exp( 1- 0.01672 * math.cos( math.radians( 0.9856 * (JulianDate -4 ))))
-# 	  
-# 	   #REVISE DATE BASED ON IMAGE
-# 	   dsquared = math.sqrt(dcal)
-# 	
-# 	  #REVISE SUN ZENITH ANGLE BASED ON RADIANS
-# 	  #23.5 is the tilt of the earth
-# 	  #SZ = Latitude + (23.5 * cosine(JulianDate));
-# 	  # SZ = 90-39 = 51- = 0.89012 radians
-# 	  #SZ = 0.89012 ;
-# 	   SZ = exp( LAT +  (23.5 * math.cos(JulianDate))) 
-# 	  
-# 	  # // reflectance or Rolamda = Unitless plantary reflectance
-# 	  #     // radiance or Llamda= spectral radiance (from earlier step)
-# 	  #     // d = Earth-Sun distance in astronmoical units 
-# 	  #     // ESUNlamda = mean solar exoatmospheric irradiances 
-# 	  #     // ths or thetas = solar zenith angle
-# 	
-# 	   ESUN = getSolarIrradianceWithBand()
-# 	   R = exp( math.pi * L * dsquared / (ESUN * math.cos(SZ)) )
-# 	  
-# 	  # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
-# 	  # AI = 1 / (Global gas transmittance * Total scattering transmittance)
-# 	  # BI = - Reflectance / Total scattering transmittance
-# 	  # 
-# 	  # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
-# 	  # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
-# 	  # 
+def convertDNtoExoatmosphericReflectance(DN, bandID):
+
+
+   
+   #function variables
+   # bandID = getBand(source_filename)
+   Lmin = getLminWithBand(bandID)       
+   Lmax = getLmaxWithBand(bandID)
+   QCALMIN = 1 
+   QCALMAX = 255
+
+ # pending center lat lon
+  # CenterLon =  
+  #   CenterLat = 
+	#!!!!!!############################################################################### pending DN parse function 
+  
+  
+	#Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
+   L = exp( Lmin+(Lmax/254-Lmin/255))
+
+	
+	# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
+  	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
+	# // QCAL = digital number, based on image's greyscale value
+	# // LMINlambda= spectral radiance scales to QCALMIN, 
+	# // LMAXlambda = spectral radiance scales to QCALMAX
+	# // QCALMIN = the minimum quantized calibrated pixel value (typically = 1, based on the images's MTL file)
+	# // QCALMAX = the maximum quantized calibrated pixel value (typically = 255, based on the images's MTL file)
+	# LMINL = exp( Lmin / QCALMIN )
+	# LMAXL = exp( Lmax / QCALMAX )
+	# L = exp(((lmax - LMINL)/(qcalmax-qcalmin))*(DN-qcalmin)+lmin)
+ 
+ 
+ 
+  # Step 2. Converting at satellite spectral radiance (L) to exoatmospheric reflectance
+
+  #!!!!!!############################################################################### pending DATE_ACQUIRED parse function 
+  #REVISE the square of the Earth-Sun distance in astronomical units
+  # there is a distinct distance for every day of the year
+  #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
+  # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
+   JulianDate = getJulianDateWithDATE_ACQUIRED(getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" , src_filename ))
+   dcal = exp( 1- 0.01672 * cos( radians( 0.9856 * ( JulianDate  -4 ))))
+  
+   #REVISE DATE BASED ON IMAGE
+   dsquared = sqrt(dcal)
+
+  #REVISE SUN ZENITH ANGLE BASED ON RADIANS
+  #23.5 is the tilt of the earth
+  #SZ = Latitude + (23.5 * cosine(JulianDate));
+  # SZ = 90-39 = 51- = 0.89012 radians
+  #SZ = 0.89012 ;
+   LAT = 39.35704080899672
+   LONG = -76.28388741488226 
+   SZ = exp( LAT +  (23.5 * cos(JulianDate))) 
+  
+  # // reflectance or Rolamda = Unitless plantary reflectance
+  #     // radiance or Llamda= spectral radiance (from earlier step)
+  #     // d = Earth-Sun distance in astronmoical units 
+  #     // ESUNlamda = mean solar exoatmospheric irradiances 
+  #     // ths or thetas = solar zenith angle
+
+   ESUN = getSolarIrradianceWithBand(bandID)
+   R = exp( pi * L * dsquared / (ESUN * cos(SZ)) )
+   return R
+  # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
+  # AI = 1 / (Global gas transmittance * Total scattering transmittance)
+  # BI = - Reflectance / Total scattering transmittance
+  # 
+  # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
+  # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
+  # 
 
 
 
@@ -295,7 +301,7 @@ i = 1
 while i < len(argv):
     arg = argv[i]
 
-    if arg[:2] == '-h':
+    if arg == '-h':
         Usage()
 
     elif src_filename is None:
@@ -303,7 +309,6 @@ while i < len(argv):
 
     elif dst_filename is None:
         dst_filename = argv[i]
-
     else:
         Usage()
 
@@ -314,8 +319,7 @@ if src_filename is None:
 
 if dst_filename is None:
     Usage()
-
-########################### end command line arguments parsing. 
+########################## end command line arguments parsing. 
 
 
 
@@ -390,20 +394,13 @@ else:
          print 'Pixel Size = (',src_geotransform[1], ',',src_geotransform[5],')'
 # #############################################################################
 
-cols = src_ds.RasterXSize #don't need parentheses
-cols = src_ds.RasterXSize
-rows = src_ds.RasterYSize
 bands = src_ds.RasterCount
-
-print cols, rows, bands
-
-
+bandID = getBand(src_filename)
+print "band id = " ,bandID 
 DATE_ACQUIRED = getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" ,  src_filename )
-print "DATE_ACQUIRED of MTL FILE =" ,DATE_ACQUIRED
+# print "DATE_ACQUIRED of MTL FILE =" ,DATE_ACQUIRED
 
 #######################
-
-
 
 srcband = src_ds.GetRasterBand(1)
 
@@ -411,27 +408,34 @@ drv = gdal.GetDriverByName(format)
 dst_ds = drv.Create( dst_filename,src_ds.RasterXSize, src_ds.RasterYSize,1,
                     srcband.DataType)
 
-# COPY GEOGRAPHIC INFO TO NEW FILE 
+# COPY GEOGRAPHIC INFO TO NEW FILE START
 wkt = src_ds.GetProjection()
 if wkt != '':
    dst_ds.SetProjection( wkt )
 
+#set destination file geotransform to source geotransform 
 dst_ds.SetGeoTransform( src_ds.GetGeoTransform() )
 # COPY GEOGRAPHIC INFO TO NEW FILE  END 
 
+#get destination raster image for band1 
 dstband = dst_ds.GetRasterBand(1)
 
+
+#### PIXEL MANIPULATION START 
 pixelValueScaleFactor = 50
+#read lines per columns 
 for i in range(srcband.YSize):
   line_data = srcband.ReadAsArray(0, i, srcband.XSize, 1)
-
+  #read rows per line 
   for j in range(srcband.XSize):
-    if line_data[0,j] + pixelValueScaleFactor > 255:
-       line_data[0,j]  = 255
-    else:
-       line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
-
+    # if line_data[0,j] + pixelValueScaleFactor > 255:
+    #        line_data[0,j]  = 255
+    #     else:
+    #        line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
+	line_data[0 , j] = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
+  #write line_data to destination array 
   dstband.WriteArray(line_data,0,i)
+#### PIXEL MANIPULATION END 
 
 
 # flush data to disk, set the NoData value and calculate stats
