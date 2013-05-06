@@ -3,8 +3,8 @@
 #  Name:     openir_atmosphericcorrection
 #  Project:  OpenIR - GDAL Python Interface
 #  Purpose:  atmospheric correction 
-#  Author:   dukodestudio, team@dukodestudio.com
-# 
+#  Author:   dukodestudio, info@dukodestudio.com
+# GDAL PYTHON DOCUMENTATION http://gdal.org/python/
 #******************************************************************************
 # the dukode studio 
 # http://dukodestudio.com
@@ -24,6 +24,8 @@ from math import *
 import re
 import time
 
+import numpy 
+
 def Usage():
     print("""USAGE: openir_atmosphericcorrection.py [sourcefile] [dstfile] """)
     sys.exit(1)
@@ -35,7 +37,7 @@ from osgeo import osr, gdal
 
 
 # =============================================================================
-#      MTL file reader with Geotiff source filename as arguments 
+#      MTL file reader with keyword and Geotiff source filename as arguments 
 # =============================================================================
 def getMTLkeywordValueWithSourceFilename( mtl_keyword , source_filename ):
     mtl_filename_list  = source_filename.split(r"_", 1)
@@ -186,6 +188,13 @@ def      SunEarthDistanceRatio(d_n):
        E_0=exp( (1.000110+ 0.034221* math.cos(t) + 0.001280* math.sin(t) + 0.000719* math.cos(2*t) + 0.000077* math.sin(2*t)) )
        return math.sqrt(exp(1/E_0))
 
+
+def CopyBand( srcband, dstband ):
+    for line in range(srcband.YSize):
+        line_data = srcband.ReadRaster( 0, line, srcband.XSize, 1 )
+        dstband.WriteRaster( 0, line, srcband.XSize, 1, line_data,
+                             buf_type = srcband.DataType )
+
 # 
 # # =============================================================================
 # #       Create output file if one is specified.
@@ -263,20 +272,22 @@ def      SunEarthDistanceRatio(d_n):
 #       Mainline
 # =============================================================================
 
-quiet_flag = 0
-src_filename = None
-src_band = None
+quiet_flag = 0 #not used? 
+src_filename = None #source file filename 
+src_band = None #source file literal band - B1, B2, B3 etc. 
 
-dst_filename = None
-format = 'GTiff'
-creation_options = []
+dst_filename = None #destination file filename 
+format = 'GTiff' #format - we are only working with geotiff at the moment 
+# creation_options = [] #not used.
 
-gdal.AllRegister() #what is that for? 
+gdal.AllRegister() #Register all known configured GDAL drivers. This function will drive any of the following that are configured into GDAL. Many others as well haven't been updated in this documentation (see full list):
+
+
+########################### Start command line arguments parsing. 
 argv = gdal.GeneralCmdLineProcessor( sys.argv )
 if argv is None:
     sys.exit( 0 )
 
-# print "x"
 # ############################
 # Parse command line arguments.
 # ############################
@@ -304,6 +315,9 @@ if src_filename is None:
 if dst_filename is None:
     Usage()
 
+########################### end command line arguments parsing. 
+
+
 
 # ###################################################
 # DETERMINE THE BAND. read geotiff metadata 
@@ -321,6 +335,7 @@ if dst_filename is None:
 # =============================================================================
 #      Open source file
 # =============================================================================
+# #############################################################################
 if dst_filename is None:
     src_ds = gdal.Open( src_filename, gdal.GA_Update )
 else:
@@ -329,8 +344,6 @@ else:
 if src_ds is None:
     print('Unable to open %s' % src_filename)
     sys.exit(1)
-
-
 if src_ds is None:
     print "Could not read file."
     Usage()
@@ -345,10 +358,10 @@ else:
     miny = gt[3] + width*gt[4] + height*gt[5] 
     maxx = gt[0] + width*gt[1] + height*gt[2]
     maxy = gt[3]
-    print 'minx  = (', minx, ')'
-    print 'miny  = (', miny, ')'
-    print 'maxx  = (', maxx, ')'
-    print 'maxy  = (', maxy, ')'
+    # print 'minx  = (', minx, ')'
+    # print 'miny  = (', miny, ')'
+    # print 'maxx  = (', maxx, ')'
+    # print 'maxy  = (', maxy, ')'
 	#get the coordinates in lat long
     old_cs= osr.SpatialReference()
     old_cs.ImportFromWkt(src_ds.GetProjectionRef())
@@ -369,16 +382,71 @@ else:
     # create a transform object to convert between coordinate systems
     transform = osr.CoordinateTransformation(old_cs,new_cs)
 
-
     LatLong = transform.TransformPoint(minx,miny)
     print 'LatLong = (', LatLong, ')'
 
     if not src_geotransform is None:
          print 'Origin = (',src_geotransform[0], ',',src_geotransform[3],')'
          print 'Pixel Size = (',src_geotransform[1], ',',src_geotransform[5],')'
- 
+# #############################################################################
+
+cols = src_ds.RasterXSize #don't need parentheses
+cols = src_ds.RasterXSize
+rows = src_ds.RasterYSize
+bands = src_ds.RasterCount
+
+print cols, rows, bands
+
+
 DATE_ACQUIRED = getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" ,  src_filename )
 print "DATE_ACQUIRED of MTL FILE =" ,DATE_ACQUIRED
 
+#######################
 
-print "JULIAN DATE of MTL FILE = ", getJulianDateWithDATE_ACQUIRED(DATE_ACQUIRED) 
+
+
+srcband = src_ds.GetRasterBand(1)
+
+drv = gdal.GetDriverByName(format)
+dst_ds = drv.Create( dst_filename,src_ds.RasterXSize, src_ds.RasterYSize,1,
+                    srcband.DataType)
+
+# COPY GEOGRAPHIC INFO TO NEW FILE 
+wkt = src_ds.GetProjection()
+if wkt != '':
+   dst_ds.SetProjection( wkt )
+
+dst_ds.SetGeoTransform( src_ds.GetGeoTransform() )
+# COPY GEOGRAPHIC INFO TO NEW FILE  END 
+
+dstband = dst_ds.GetRasterBand(1)
+
+pixelValueScaleFactor = 50
+for i in range(srcband.YSize):
+  line_data = srcband.ReadAsArray(0, i, srcband.XSize, 1)
+
+  for j in range(srcband.XSize):
+    if line_data[0,j] + pixelValueScaleFactor > 255:
+       line_data[0,j]  = 255
+    else:
+       line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
+
+  dstband.WriteArray(line_data,0,i)
+
+
+# flush data to disk, set the NoData value and calculate stats
+dstband.FlushCache()
+dstband.SetNoDataValue(-99)
+stats = dstband.GetStatistics(0, 1)
+
+# georeference the image and set the projection
+dst_ds.SetGeoTransform(src_ds.GetGeoTransform())
+dst_ds.SetProjection(src_ds.GetProjection())
+
+# build pyramids
+gdal.SetConfigOption('HFA_USE_RRD', 'YES')
+dst_ds.BuildOverviews(overviewlist=[2,4,8,16,32,64,128])
+
+src_ds = None
+dst_ds = None
+#
