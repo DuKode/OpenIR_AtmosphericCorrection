@@ -44,12 +44,9 @@ def getMTLkeywordValueWithSourceFilename( mtl_keyword , source_filename ):
     mtl_filename = mtl_filename_list[0]
     mtl_filename+=("_MTL.txt")
     mtl_exists = os.path.exists( mtl_filename)
-    if(mtl_exists):
-       # print ("MTL file found",  mtl_exists)
-    else: 
+    if(mtl_exists == 0):
        print ("MTL file not found")
        sys.exit(1)
-	#read MTL file 
     mtl_content = ""
     with open(mtl_filename, 'r') as content_file:
 	  mtl_content = content_file.read()
@@ -142,6 +139,7 @@ def getLmaxWithBand(bandID):
 
 #Mean solar exoatmospheric irradiance in mW cm-2m m-1. ESUN can be obtained from Table 11.2 in http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html.      
 def getSolarIrradianceWithBand(bandID):
+    # units watts/(meter squared * nano-m)
     ESUN1 = 1997.0
     ESUN2 = 1812.0
     ESUN3 = 1530.0
@@ -150,6 +148,7 @@ def getSolarIrradianceWithBand(bandID):
     ESUN6 = 000.0 
     ESUN7 = 84.90 
     ESUN8 = 1362.0
+
     if bandID == 1:
           return ESUN1
     elif bandID == 2:
@@ -175,7 +174,7 @@ def getSolarIrradianceWithBand(bandID):
 #get bandID from file
 def getBand(filename):
     band = re.search('B\\d',filename).group(0)
-    print band
+    # print band
     band = re.search('\\d',band).group(0)
     return int(band)
 
@@ -217,9 +216,12 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
   
   
 	#Step 1. Converting DN to at satellite spectral radiance (L) using formulae of the type:
-   L = exp( Lmin+(Lmax/254-Lmin/255))
+# 	2.1.1. Gain and Bias Method http://www.yale.edu/ceo/Documentation/Landsat_DN_to_Reflectance.pdf
+#   L = gain * DN + bias 
+# 2.1.2. Spectral Radiance Scaling Method http://www.yale.edu/ceo/Documentation/Landsat_DN_to_Reflectance.pdf
+   # L = exp( Lmin+(Lmax/254-Lmin/255))	
+   L = exp(((Lmax - Lmin)/(QCALMAX - QCALMIN))*(DN-QCALMIN)+Lmin) 
 
-	
 	# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
   	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
 	# // QCAL = digital number, based on image's greyscale value
@@ -241,18 +243,74 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
   #based on http://landsathandbook.gsfc.nasa.gov/excel_docs/d.xls
   # var dcal = (1-0.01672*COS(RADIANS(0.9856*(Julian Day-4))))
    JulianDate = getJulianDateWithDATE_ACQUIRED(getMTLkeywordValueWithSourceFilename( "DATE_ACQUIRED" , src_filename ))
-   dcal = exp( 1- 0.01672 * cos( radians( 0.9856 * ( JulianDate  -4 ))))
+   if (JulianDate>=1 and JulianDate<15):
+	d = 0.9832
+   elif (JulianDate>=15 and JulianDate<32):
+	d = 0.9836
+   elif (JulianDate>=32 and JulianDate<46):
+	d = 0.9853
+   elif (JulianDate>=46 and JulianDate<60):
+	d = 0.9878
+   elif (JulianDate>=60 and JulianDate<74):
+	d = 0.9878
+   elif (JulianDate>=60 and JulianDate<74):
+	d = 0.9909
+   elif (JulianDate>=74 and JulianDate<91):
+	d = 0.9945
+   elif (JulianDate>=91 and JulianDate<106):
+	d = 0.9993
+   elif (JulianDate>=106 and JulianDate<121):
+	d = 1.0033
+   elif (JulianDate>=121 and JulianDate<135):
+	d = 1.0076
+   elif (JulianDate>=135 and JulianDate<152):
+	d = 1.0109
+   elif (JulianDate>=152 and JulianDate<166):
+	d = 1.0140
+   elif (JulianDate>=166 and JulianDate<182):
+	d = 1.0158
+   elif (JulianDate>=182 and JulianDate<196):
+	d = 1.0167
+   elif (JulianDate>=196 and JulianDate<213):
+	d = 1.0165
+   elif (JulianDate>=213 and JulianDate<227):
+	d = 1.0149
+   elif (JulianDate>=227 and JulianDate<242):
+	d = 1.0128
+   elif (JulianDate>=242 and JulianDate<258):
+	d = 1.0092
+   elif (JulianDate>=258 and JulianDate<274):
+	d = 1.0057
+   elif (JulianDate>=274 and JulianDate<288):
+	d = 1.0011
+   elif (JulianDate>=288 and JulianDate<305):
+	d = 0.9972
+   elif (JulianDate>=305 and JulianDate<319):
+	d = 0.9925
+   elif (JulianDate>=319 and JulianDate<335):
+	d = 0.9892
+   elif (JulianDate>=335 and JulianDate<349):
+	d = 0.9860
+   elif (JulianDate>=349 and JulianDate<365):
+	d = 0.9843
+   elif (JulianDate>=365):
+	d = 0.9833
+   else:
+	print "Julian date greater than should ", JulianDate
+	sys.exit(1)
+   # d = exp()
+   # dcal = exp( 1- 0.01672 * cos( radians( 0.9856 * ( JulianDate  -4 ))))
   
    #REVISE DATE BASED ON IMAGE
-   dsquared = sqrt(dcal)
+   # dsquared = sqrt(d)
 
   #REVISE SUN ZENITH ANGLE BASED ON RADIANS
   #23.5 is the tilt of the earth
   #SZ = Latitude + (23.5 * cosine(JulianDate));
   # SZ = 90-39 = 51- = 0.89012 radians
   #SZ = 0.89012 ;
-   LAT = 39.35704080899672
-   LONG = -76.28388741488226 
+   LAT = 39.35704080899672 
+   LONG = -76.28388741488226
    SZ = exp( LAT +  (23.5 * cos(JulianDate))) 
   
   # // reflectance or Rolamda = Unitless plantary reflectance
@@ -262,8 +320,8 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
   #     // ths or thetas = solar zenith angle
 
    ESUN = getSolarIrradianceWithBand(bandID)
-   R = exp( pi * L * dsquared / (ESUN * cos(SZ)) )
-   return R
+   R = exp( pi * L * sqrt(d) / (ESUN * cos(SZ)) )
+   return R *1000
   # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
   # AI = 1 / (Global gas transmittance * Total scattering transmittance)
   # BI = - Reflectance / Total scattering transmittance
@@ -277,6 +335,8 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
 # =============================================================================
 #       Mainline
 # =============================================================================
+
+
 
 quiet_flag = 0 #not used? 
 src_filename = None #source file filename 
@@ -394,6 +454,11 @@ else:
          print 'Pixel Size = (',src_geotransform[1], ',',src_geotransform[5],')'
 # #############################################################################
 
+
+#create log file. 
+logfile = open(src_filename+".txt", "w")
+
+
 bands = src_ds.RasterCount
 bandID = getBand(src_filename)
 print "band id = " ,bandID 
@@ -429,11 +494,16 @@ for i in range(srcband.YSize):
   #read rows per line 
   for j in range(srcband.XSize):
     # if line_data[0,j] + pixelValueScaleFactor > 255:
-    #        line_data[0,j]  = 255
-    #     else:
-    #        line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
-	line_data[0 , j] = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
-  #write line_data to destination array 
+    #   line_data[0,j]  = 255
+    # else:
+    #   line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
+    pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
+    pixel_valueString = str(line_data[0,j]) 
+    pixel_valueString+=", "
+    logfile.write(pixel_valueString) 
+    line_data[0 , j] = pixel_value
+   #write line_data to destination array 
+  logfile.write("\n")
   dstband.WriteArray(line_data,0,i)
 #### PIXEL MANIPULATION END 
 
