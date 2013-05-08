@@ -220,7 +220,7 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
 #   L = gain * DN + bias 
 # 2.1.2. Spectral Radiance Scaling Method http://www.yale.edu/ceo/Documentation/Landsat_DN_to_Reflectance.pdf
    # L = exp( Lmin+(Lmax/254-Lmin/255))	
-   L = exp(((Lmax - Lmin)/(QCALMAX - QCALMIN))*(DN-QCALMIN)+Lmin) 
+   L = exp( ((Lmax - Lmin)/(QCALMAX - QCALMIN))*(DN-QCALMIN)+Lmin ) 
 
 	# ARLENE NOTE: the code below is a different (more accurate)? way to calculate L, from http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
   	# // NOTE: radiance is commonly notated as Llambda (where "lambda" is the band number)
@@ -321,15 +321,25 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
 
    ESUN = getSolarIrradianceWithBand(bandID)
    R = exp( pi * L * sqrt(d) / (ESUN * cos(SZ)) )
-   return R *1000
-  # #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
-  # AI = 1 / (Global gas transmittance * Total scattering transmittance)
-  # BI = - Reflectance / Total scattering transmittance
-  # 
-  # #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
-  # (AI1 * @1 + BI1) / (1 + S1 * (AI1 * @1 + BI1) )
-  # 
+   # return R
 
+   #Stage 2 of atmospheric correction using 5S radiative transfer model outputs
+   #AI = 1 / (Global_gas_transmittance * Total_scattering_transmittance)
+   #BI = - R / Total_scattering_transmittance
+   AI = 1.2561 #TEST VALUES FOR BAND 1 FROM http://cwcaribbean.aoml.noaa.gov/bilko/module7/lesson3/images/Radcojun.frm
+   BI = -0.0957 #TEST VALUES FOR BAND 1 FROM http://cwcaribbean.aoml.noaa.gov/bilko/module7/lesson3/images/Radcojun.frm
+
+   intermediate_image_Y = AI * R + BI 
+   #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
+
+   #S = Spherical albedo: TM1 = 0.167, TM2 = 0.121, TM3 = 0.092
+   #Converting Y to surface reflectance (on scale 0-1) with formulae of the type:
+   S1 = 0.167 #TEST VALUES FOR BAND 1 FROM http://cwcaribbean.aoml.noaa.gov/bilko/module7/lesson3/images/Radcojun.frm
+
+   SR = intermediate_image_Y / (1 + S1 * intermediate_image_Y)
+   
+
+   return SR 
 
 
 # =============================================================================
@@ -456,7 +466,11 @@ else:
 
 
 #create log file. 
-logfile = open(src_filename+".txt", "w")
+import time
+import datetime
+ts = time.time()
+st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%dT%H-%M-%S')
+logfile = open("log"+st+".txt", "w")
 
 
 bands = src_ds.RasterCount
@@ -489,6 +503,30 @@ dstband = dst_ds.GetRasterBand(1)
 #### PIXEL MANIPULATION START 
 pixelValueScaleFactor = 50
 #read lines per columns 
+
+rows = srcband.YSize
+cols = srcband.XSize
+
+
+# import sys
+# import time
+# 
+# a = 0  
+# for x in range (0,3):  
+#     a = a + 1  
+#     b = ("Loading" + "." * a)
+#     # \r prints a carriage return first, so `b` is printed on top of the previous line.
+#     sys.stdout.write('\r'+b)
+#     time.sleep(0.5)
+# print (a)
+# sys.exit(1)
+nodata_value = 0 
+nodate_value_result = srcband.SetNoDataValue(0)
+print "nodate_value_result = ", nodata_value
+print "nodata_value = ", nodata_value
+
+# sys.exit(1)
+
 for i in range(srcband.YSize):
   line_data = srcband.ReadAsArray(0, i, srcband.XSize, 1)
   #read rows per line 
@@ -497,11 +535,13 @@ for i in range(srcband.YSize):
     #   line_data[0,j]  = 255
     # else:
     #   line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
-    pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
-    pixel_valueString = str(line_data[0,j]) 
-    pixel_valueString+=", "
-    logfile.write(pixel_valueString) 
-    line_data[0 , j] = pixel_value
+    # if line_data[0,j] > 0: 
+      pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
+      # print pixel_value
+      # pixel_valueString = str(line_data[0,j]) 
+      # pixel_valueString+=", "
+      # logfile.write(pixel_valueString) 
+      line_data[0 , j] = pixel_value
    #write line_data to destination array 
   logfile.write("\n")
   dstband.WriteArray(line_data,0,i)
