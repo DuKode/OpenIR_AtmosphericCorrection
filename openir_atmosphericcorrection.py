@@ -329,16 +329,15 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
    AI = 1.2561 #TEST VALUES FOR BAND 1 FROM http://cwcaribbean.aoml.noaa.gov/bilko/module7/lesson3/images/Radcojun.frm
    BI = -0.0957 #TEST VALUES FOR BAND 1 FROM http://cwcaribbean.aoml.noaa.gov/bilko/module7/lesson3/images/Radcojun.frm
 
-   intermediate_image_Y = AI * R + BI 
+   intermediate_image_Y = exp(AI * R + BI) 
    #Stage 3 of atmospheric correction using 5S radiative transfer model outputs
 
    #S = Spherical albedo: TM1 = 0.167, TM2 = 0.121, TM3 = 0.092
    #Converting Y to surface reflectance (on scale 0-1) with formulae of the type:
    S1 = 0.167 #TEST VALUES FOR BAND 1 FROM http://cwcaribbean.aoml.noaa.gov/bilko/module7/lesson3/images/Radcojun.frm
 
-   SR = intermediate_image_Y / (1 + S1 * intermediate_image_Y)
+   SR = exp(intermediate_image_Y / (1 + S1 * intermediate_image_Y))
    
-
    return SR 
 
 
@@ -520,33 +519,54 @@ cols = srcband.XSize
 #     time.sleep(0.5)
 # print (a)
 # sys.exit(1)
+class Printer():
+    """Print things to stdout on one line dynamically"""
+    def __init__(self,data):
+        sys.stdout.write("\r\x1b[K"+data.__str__())
+        sys.stdout.flush()
+def format_seconds_to_hhmmss(seconds):
+    hours = seconds // (60*60)
+    seconds %= (60*60)
+    minutes = seconds // 60
+    seconds %= 60
+    return "%02i:%02i:%02i" % (hours, minutes, seconds)
+
 nodata_value = 0 
 nodate_value_result = srcband.SetNoDataValue(0)
 print "nodate_value_result = ", nodata_value
 print "nodata_value = ", nodata_value
-
 # sys.exit(1)
 
+processing_percentage = 0 
+progress =  ("Processing file" + "." * int(processing_percentage))
+sys.stdout.write('\r'+ progress)
+start_time = time.time()
 for i in range(srcband.YSize):
   line_data = srcband.ReadAsArray(0, i, srcband.XSize, 1)
   #read rows per line 
+  #estimate progress percentage start  
+  total_pixel = (srcband.YSize) 
+  current_pixel = i+1
+  processing_percentage = (current_pixel/(total_pixel*1.0)*100)
+  # print ("hello", current_pixel/total_pixel)
+  # print ("hello", exp(current_pixel/total_pixel))
+  # print ("hello", float(current_pixel/total_pixel))
+  # print "total_pixel " , total_pixel , "current_pixel ", current_pixel, "i ", i 
+
+
   for j in range(srcband.XSize):
-    # if line_data[0,j] + pixelValueScaleFactor > 255:
-    #   line_data[0,j]  = 255
-    # else:
-    #   line_data[0,j]  =  line_data[0,j]  + pixelValueScaleFactor
-    # if line_data[0,j] > 0: 
-      pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
-      # print pixel_value
-      # pixel_valueString = str(line_data[0,j]) 
-      # pixel_valueString+=", "
-      # logfile.write(pixel_valueString) 
-      line_data[0 , j] = pixel_value
-   #write line_data to destination array 
+    pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
+    if pixel_value < 0:
+      print pixel_value
+    line_data[0 , j] = pixel_value
+  #write line_data to destination array 
   logfile.write("\n")
   dstband.WriteArray(line_data,0,i)
 #### PIXEL MANIPULATION END 
-
+  elapsedTime = -(start_time-(time.time()))
+  output = "File processing  %f %% completed. Elapsed time %s hh:mm:ss, estimate completion at: %s" % (processing_percentage, format_seconds_to_hhmmss(-(start_time-(time.time()))), format_seconds_to_hhmmss( (100.0/processing_percentage)*-(start_time-time.time())) )  
+# print (time.time() - start_time), "seconds"
+  Printer(output)
 
 # flush data to disk, set the NoData value and calculate stats
 dstband.FlushCache()
