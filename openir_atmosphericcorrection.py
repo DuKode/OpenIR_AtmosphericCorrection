@@ -361,8 +361,9 @@ def getHistogramOffsetValue(source_ds):
   offsetValue = 0
   offsetIndex = 0
   addValue = 1 
+  offset_sensetivity = 70 
   for i in range(len(histogram)):
-     histogram8bit.append((histogram[i]%255)/10)
+     histogram8bit.append((histogram[i]%255)/offset_sensetivity)
   
   print histogram8bit
   i=0
@@ -374,7 +375,7 @@ def getHistogramOffsetValue(source_ds):
    print "offsetValue =", offsetValue 
    addValue=histogram8bit[i]
    print "addValue =", addValue 
-   offsetIndex=i 
+   offsetIndex=i-1 
  
   return  offsetIndex
 
