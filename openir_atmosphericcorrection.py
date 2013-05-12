@@ -341,6 +341,54 @@ def convertDNtoExoatmosphericReflectance(DN, bandID):
    return SR 
 
 
+class Printer():
+    """Print things to stdout on one line dynamically"""
+    def __init__(self,data):
+        sys.stdout.write("\r\x1b[K"+data.__str__())
+        sys.stdout.flush()
+def format_seconds_to_hhmmss(seconds):
+    hours = seconds // (60*60)
+    seconds %= (60*60)
+    minutes = seconds // 60
+    seconds %= 60
+    return "%02i:%02i:%02i" % (hours, minutes, seconds)
+
+
+def getHistogramOffsetValue(source_ds):
+  source_raster = source_ds.GetRasterBand(1)
+  histogram = source_raster.GetHistogram( 1, 255,  256,  0,  1, None, None)
+  histogram8bit =[]
+  offsetValue = 0
+  offsetIndex = 0
+  addValue = 1 
+  for i in range(len(histogram)):
+     histogram8bit.append((histogram[i]%255)/10)
+  
+  print histogram8bit
+  i=0
+  while offsetValue<=addValue:
+   i+=1
+   offsetIndex = i 
+   print "offsetIndex =", i 
+   offsetValue+=histogram8bit[i]
+   print "offsetValue =", offsetValue 
+   addValue=histogram8bit[i]
+   print "addValue =", addValue 
+   offsetIndex=i 
+ 
+  return  offsetIndex
+
+def getDarkObjectFromImage(source_ds):
+  source_raster = source_ds.GetRasterBand(1)
+  dark_object = 255
+  for i in range(source_raster.YSize):
+    line_data = source_raster.ReadAsArray(0, i, source_raster.XSize, 1)
+    for j in range(source_raster.XSize):
+      current_pixel = line_data[0,j]
+      if current_pixel < dark_object and current_pixel > 0:
+        dark_object = current_pixel 
+  return dark_object 
+
 # =============================================================================
 #       Mainline
 # =============================================================================
@@ -506,31 +554,6 @@ pixelValueScaleFactor = 50
 rows = srcband.YSize
 cols = srcband.XSize
 
-
-# import sys
-# import time
-# 
-# a = 0  
-# for x in range (0,3):  
-#     a = a + 1  
-#     b = ("Loading" + "." * a)
-#     # \r prints a carriage return first, so `b` is printed on top of the previous line.
-#     sys.stdout.write('\r'+b)
-#     time.sleep(0.5)
-# print (a)
-# sys.exit(1)
-class Printer():
-    """Print things to stdout on one line dynamically"""
-    def __init__(self,data):
-        sys.stdout.write("\r\x1b[K"+data.__str__())
-        sys.stdout.flush()
-def format_seconds_to_hhmmss(seconds):
-    hours = seconds // (60*60)
-    seconds %= (60*60)
-    minutes = seconds // 60
-    seconds %= 60
-    return "%02i:%02i:%02i" % (hours, minutes, seconds)
-
 nodata_value = 0 
 nodate_value_result = srcband.SetNoDataValue(0)
 print "nodate_value_result = ", nodata_value
@@ -541,6 +564,16 @@ processing_percentage = 0
 progress =  ("Processing file" + "." * int(processing_percentage))
 sys.stdout.write('\r'+ progress)
 start_time = time.time()
+
+#dark object subtraction method
+# DOS_pixel_value = getDarkObjectFromImage(src_ds)
+# print "DOS_pixel_value = ", DOS_pixel_value 
+
+#histogram methods 
+offset_value = getHistogramOffsetValue (src_ds)
+print "histogram offset value  = ", offset_value 
+# sys.exit(1)
+
 for i in range(srcband.YSize):
   line_data = srcband.ReadAsArray(0, i, srcband.XSize, 1)
   #read rows per line 
@@ -555,10 +588,20 @@ for i in range(srcband.YSize):
 
 
   for j in range(srcband.XSize):
-    pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
-    if pixel_value < 0:
-      print pixel_value
-    line_data[0 , j] = pixel_value
+	
+    # pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
+    # pixel_value *=4 
+    # if pixel_value < 0:
+    #   print pixel_value
+    
+    #dos 
+	# line_data[0 , j] = line_data[0 , j] - DOS_pixel_value
+    #histogram 
+    if (line_data[0,j]-offset_value) < 0:
+      line_data[0,j] = 0
+    else: 
+      line_data[0, j] = line_data[0,j] - offset_value
+	
   #write line_data to destination array 
   logfile.write("\n")
   dstband.WriteArray(line_data,0,i)
