@@ -596,14 +596,16 @@ for i in xrange(srcband.YSize):
         
         #dos 
         # line_data[0 , j] = line_data[0 , j] - DOS_pixel_value
-        #histogram 
+        #histogram
+
+        #illias I changed your if statment from an if to a max
         line_data[0, j] = max(line_data[0,j] - offset_value,0)
   
     #write line_data to destination array 
     logfile.write("\n")
     dstband.WriteArray(line_data,0,i)
     #### PIXEL MANIPULATION END 
-    elapsedTime = -(start_time-(time.time()))
+    elapsedTime = time.time()-start_time
     output = "File processing  %f %% completed. Elapsed time %s hh:mm:ss, estimate completion at: %s" % (processing_percentage, format_seconds_to_hhmmss(-(start_time-(time.time()))), format_seconds_to_hhmmss( (100.0/processing_percentage)*-(start_time-time.time())) )  
     
     Printer(output)

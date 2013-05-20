@@ -1,0 +1,66 @@
+http://www.maptiler.org/google-maps-coordinates-tile-bounds-projection/
+
+[12/29/12 11:34:52 PM] Steph N: The upper left tile is 601/1280
+[12/29/12 11:35:06 PM] Steph N: the lower right tile is 605/1277
+
+-74.35546875  41.11246878918085 -73.4765625 40.58058466412761
+
+
+We georeference our tile composite alphas with gdal_translate, the data are in EPSG:4326 
+
+gdal_translate -of GTiff -a_srs EPSG:3857 -a_ullr -74.35546875 41.11246878918085 -73.4765625 40.58058466412761 urb_LL.tiff urb_LL.geo.tiff
+
+gdal_translate -of GTiff -a_srs EPSG:3857 -a_ullr -74.35546875 41.11246878918085 -73.4765625 40.58058466412761 urb_HL.tiff urb_HL.geo.tiff
+
+gdal_translate -of GTiff -a_srs EPSG:3857 -a_ullr -74.35546875 41.11246878918085 -73.4765625 40.58058466412761 veg_HL.tiff veg_HL.geo.tiff
+
+gdal_translate -of GTiff -a_srs EPSG:3857 -a_ullr -74.35546875 41.11246878918085 -73.4765625 40.58058466412761 veg_LL.tiff veg_LL.geo.tiff
+
+
+FEMA has released Interim High Surge Area data available for the affected states from hurricane Sandy located at: 
+http://184.72.33.183/GISData/MOTF/
+
+Data file processing example:  
+NY_Nov11Interim3mSurgeData
+
+The data is projected at +proj=lcc +lat_1=40.66666666666666 +lat_2=41.03333333333333 +lat_0=40.16666666666666 +lon_0=-74 +x_0=300000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=us-ft +no_defs
+
+Our data (tiles alpha) are projected at +proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs
+
+In order to comply FEMA shape data to our 4326 projection we will use ogr2ogr to reproject to EPSG:4326
+
+ogr2ogr  -wrapdateline -s_srs '+proj=lcc +lat_1=40.66666666666666 +lat_2=41.03333333333333 +lat_0=40.16666666666666 +lon_0=-74 +x_0=300000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=us-ft +no_defs' -t_srs EPSG:4326 NY_HWMSSS1111_InterimHi_SurgeArea.4326.shp NY_HWMSSS1111_InterimHi_SurgeArea.shp
+
+we do not need to do the same for CT_HWMSSS1111_InterimHi_SurgeArea
+also with RI_HWMSSS_1111_InterimHi_SurgeArea
+but lets not forget NJ! perform the same transformation as NY 
+
+ogr2ogr  -wrapdateline -s_srs '+proj=tmerc +lat_0=38.83333333333334 +lon_0=-74.5 +k=0.9999 +x_0=150000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=us-ft +no_defs' -t_srs EPSG:4326 NJ_HWMSSS1111_InterimHi_SurgeArea.4326.shp NJ_HWMSSS1111_InterimHi_SurgeArea.shp
+
+Import the files in to qgis 
+
+export the flood surge data from qgis and georeference: 
+gdal_translate -of GTiff -a_srs EPSG:4326 -a_ullr -74.5 41.5 -73 40 flood_surge.jpeg flood_surge.tiff
+
+gdal_translate -of GTiff -a_srs EPSG:4326 -a_ullr -74.5 41.5 -73 40 flood_surge.jpeg flood_surge.tiff	
+
+Process additional data for qgis: 
+
+(gml: geography markup language)
+
+ex. gdal_polygonize.py dblbnd.adf dblbnd.adf.GML 
+
+
+To create a raster from the new shape file use the following: 
+gdal_rasterize -ts 2000 2000 -burn 255  NY_HWMSSS1111_InterimHi_SurgeArea.4326.shp NY.tif
+
+
+#####/Library/Frameworks/GDAL.framework/Versions/1.8/Programs
+ogr2ogr -clipsrc clipping_polygon.shp output.shp input.shp
+
+ogr2ogr -progress  -f "ESRI Shapefile" -t_srs EPSG:4326 -clipdst -74.35546875  41.11246878918085 -73.4765625 40.58058466412761  -clipsrc veg_urb_vector_data/veg_HL.shp clip_NY_veg_HL_1.shp  ../FEMA_data/NY_Nov11Interim3mSurgeData/NY_HWMSSS1111_InterimHi_SurgeArea.shp
+
+ogr2ogr -progress -t_srs EPSG:4326 -clipdst -74.35546875  41.11246878918085 -73.4765625 40.58058466412761  -clipsrc ../FEMA_data/NY_Nov11Interim3mSurgeData/NY_HWMSSS1111_InterimHi_SurgeArea.shp  clip_NY_veg_HL.shp  veg_urb_vector_data/veg_HL.shp
+
+
+1241b7 - 4d91d7 - 8be6f9
