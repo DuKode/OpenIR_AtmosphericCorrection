@@ -27,7 +27,7 @@ import time
 import numpy 
 
 def Usage():
-    print("""USAGE: openir_atmosphericcorrection.py [sourcefile] [dstfile] """)
+    print("""USAGpyhtonE: openir_atmosphericcorrection.py [sourcefile] [dstfile] """)
     sys.exit(1)
 
 from osgeo import osr, gdal

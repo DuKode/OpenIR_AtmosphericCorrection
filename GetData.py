@@ -35,52 +35,62 @@ def changePixelData(filename,amount):
     band = inDS.GetRasterBand(bandnumber)
     driver = inDS.GetDriver()
     
-    driver.CreateCopy("cpy" + filename,inDS,False)
+    driver.Create("cpy" + filename,inDS.RasterXSize,inDS.RasterYSize,1, band.DataType)
     outDS = gdal.Open("cpy" + filename)
     outDS.SetProjection(inDS.GetProjection())
     outDS.SetGeoTransform(inDS.GetGeoTransform())
-    
-    outBand = outDS.GetRasterBand(bandnumber)
-    outdata = None
+
+   
+    outBand = outDS.GetRasterBand(1)
+    outdata = numpy.zeros((64,64))
     data = None
 
     i = 0
+    blockysize = 64
+    blockxsize = 64
+    print inDS.RasterYSize
     while i <= xrange(inDS.RasterYSize):
-        rowsize = 10
-        if rowsize+i > inDS.RasterYSize:
-            rowsize = inDS.RasterYSize - i - 1
-            if rowsize == 0:
+        j = 0
+        while j <= xrange(inDS.RasterXSize):
+            yend = i + 64
+            xend = j + 64
+            if (i + 64) >= inDS.RasterYSize or (j +64 ) >= inDS.RasterXSize: 
                 break
-        data = band.ReadAsArray(0,i,inDS.RasterXSize,10)
-        for row in xrange(10):
-            for col in xrange(inDS.RasterXSize):
-                if data[row][col] + amount > 255:
-                    data[row][col] = 255
-                else:
-                    data[row][col] = data[row][col] + amount
-        outBand.WriteArray(data,0,i)
-        i = i + 10
-        
+            data = numpy.array(band.ReadAsArray(j,i,64,64))
+            if data == None:
+                break
+            for row in xrange(len(data)):
+                if data[0] == None:
+                    break
+                for col in xrange(len(data[0])):
+                    if data[row][col] + amount > 255:
+                         #data[row][col] = 255
+                         outdata[row][col] = 255
+                    else:
+                        #data[row][col] = data[row][col] + amount
+                        outdata[row][col] = data[row][col] + amount
+            outBand.WriteArray(outdata,j,i)
+            j = j + 64
+        i = i + 64
+
+    outBand.FlushCache()
+    outBand.SetNoDataValue(-99)
+
+    gdal.SetConfigOption('HFA_USE_RRD', 'YES')
+    outDS.BuildOverviews(overviewlist=[2,4,8,16,32,64,128])
+    
     print "written"
 
-##    j = 0    
-##    while j <= xrange(inDS.RasterYSize):
-##        rowsize = 10
-##        if rowsize+j > inDS.RasterYSize:
-##            rowsize = inDS.RasterYSize - j - 1
-##            if rowsize == 0:
-##                break
-##        data = band.ReadAsArray(0,j,inDS.RasterXSize,10)
-##        outdata = outBand.ReadAsArray(0,j,inDS.RasterXSize,10)
-##        for row in xrange(len(outdata)):
-##            for col in xrange(len(outdata)):
-##                if not data[row][col] == outdata[row][col]:
-##                    print row
-##                    print col
-##                    print data[row][col]
-##                    print outdata[row][col]
-##                    return False
-##        j = j + 10
+    j = 0    
+    while j <= xrange(inDS.RasterYSize):
+        rowsize = 10
+        if rowsize+j > inDS.RasterYSize:
+            rowsize = inDS.RasterYSize - j - 1
+            if rowsize == 0:
+                break
+        print outBand.ReadAsArray(0,j,inDS.RasterXSize/2,1)
+      
+        j = j + 10
  
 
 
@@ -96,5 +106,5 @@ def getBand(filename):
     return int(band)
 
 
-
+changePixelData("LE70140321999186EDC00_B1.TIF",200)
     
