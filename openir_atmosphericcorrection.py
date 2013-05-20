@@ -361,9 +361,9 @@ def getHistogramOffsetValue(source_ds):
   offsetValue = 0
   offsetIndex = 0
   addValue = 1 
-  offset_sensetivity = 70 
+  offset_sensitivity = 70 
   for i in range(len(histogram)):
-     histogram8bit.append((histogram[i]%255)/offset_sensetivity)
+     histogram8bit.append((histogram[i]%255)/offset_sensitivity)
   
   print histogram8bit
   i=0
@@ -609,9 +609,9 @@ for i in range(srcband.YSize):
 #### PIXEL MANIPULATION END 
   elapsedTime = -(start_time-(time.time()))
   output = "File processing  %f %% completed. Elapsed time %s hh:mm:ss, estimate completion at: %s" % (processing_percentage, format_seconds_to_hhmmss(-(start_time-(time.time()))), format_seconds_to_hhmmss( (100.0/processing_percentage)*-(start_time-time.time())) )  
-# print (time.time() - start_time), "seconds"
+ 
   Printer(output)
-
+print "done\n"
 # flush data to disk, set the NoData value and calculate stats
 dstband.FlushCache()
 dstband.SetNoDataValue(-99)
