@@ -575,40 +575,56 @@ offset_value = getHistogramOffsetValue (src_ds)
 print "histogram offset value  = ", offset_value 
 # sys.exit(1)
 
-for i in xrange(srcband.YSize):
-    line_data = numpy.array(srcband.ReadAsArray(0, i, srcband.XSize, 1))
-    #read rows per line 
-    #estimate progress percentage start   
-    current_pixel = i+1
-    processing_percentage = (current_pixel/(srcband.YSize*1.0)*100)
-    # print ("hello", current_pixel/total_pixel)
-    # print ("hello", exp(current_pixel/total_pixel))
-    # print ("hello", float(current_pixel/total_pixel))
-    # print "total_pixel " , total_pixel , "current_pixel ", current_pixel, "i ", i 
-    
-    
-    for j in xrange(srcband.XSize):
-        
-        # pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
-        # pixel_value *=4 
-        # if pixel_value < 0:
-        #   print pixel_value
-        
-        #dos 
-        # line_data[0 , j] = line_data[0 , j] - DOS_pixel_value
-        #histogram
+##for i in xrange(srcband.YSize):
+##    line_data = numpy.array(srcband.ReadAsArray(0, i, srcband.XSize, 1))
+##    #read rows per line 
+##    #estimate progress percentage start   
+##    current_pixel = i+1
+##    processing_percentage = (current_pixel/(srcband.YSize*1.0)*100)
+##    # print ("hello", current_pixel/total_pixel)
+##    # print ("hello", exp(current_pixel/total_pixel))
+##    # print ("hello", float(current_pixel/total_pixel))
+##    # print "total_pixel " , total_pixel , "current_pixel ", current_pixel, "i ", i 
+##    
+##    
+##    for j in xrange(srcband.XSize):
+##        
+##        # pixel_value = convertDNtoExoatmosphericReflectance(line_data[0,j], getBand(src_filename))
+##        # pixel_value *=4 
+##        # if pixel_value < 0:
+##        #   print pixel_value
+##        
+##        #dos 
+##        # line_data[0 , j] = line_data[0 , j] - DOS_pixel_value
+##        #histogram
+##
+##        #illias I changed your if statment from an if to a max
+##        line_data[0, j] = max(line_data[0,j] - offset_value,0)
+##        logfile.write(str(line_data[0,j]))
+##  
+##    #write line_data to destination array 
+##    logfile.write("\n")
+##    dstband.WriteArray(line_data,0,i)
+##    #### PIXEL MANIPULATION END 
+##    elapsedTime = time.time()-start_time
+##    output = "File processing  %f %% completed. Elapsed time %s hh:mm:ss, estimate completion at: %s" % (processing_percentage, format_seconds_to_hhmmss(-(start_time-(time.time()))), format_seconds_to_hhmmss( (100.0/processing_percentage)*-(start_time-time.time())) )  
+##    
+##    Printer(output)
 
-        #illias I changed your if statment from an if to a max
-        line_data[0, j] = max(line_data[0,j] - offset_value,0)
-  
-    #write line_data to destination array 
-    logfile.write("\n")
+##Here's the numpy implementation of the above code.
+##Loads the array into one big block
+##Reads it row by row, does subtraction (the minus is overloaded in numpy)
+##Clip forces values to be equal to or between the min and max value
+##Writes the array as a block
+
+offset = numpy.ones(srcband.XSize) * offset_value
+print offset
+for i in xrange(rows):
+    line_data = numpy.array(srcband.ReadAsArray(0, i, srcband.XSize, 1))
+    line_data = line_data - offset
+    line_data = numpy.clip(line_data,0,sys.maxint)
     dstband.WriteArray(line_data,0,i)
-    #### PIXEL MANIPULATION END 
-    elapsedTime = time.time()-start_time
-    output = "File processing  %f %% completed. Elapsed time %s hh:mm:ss, estimate completion at: %s" % (processing_percentage, format_seconds_to_hhmmss(-(start_time-(time.time()))), format_seconds_to_hhmmss( (100.0/processing_percentage)*-(start_time-time.time())) )  
-    
-    Printer(output)
+
 print "done\n"
 # flush data to disk, set the NoData value and calculate stats
 dstband.FlushCache()
